@@ -21,6 +21,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY app/ ./app/
+COPY startup.py .
 
 USER appuser
 
@@ -28,4 +29,4 @@ EXPOSE 8000
 
 # Uvicorn workers: 1 is fine for low-volume webhook use.
 # Increase to (2 * CPU_count + 1) for high throughput.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--log-config", "/dev/null"]
+CMD ["python", "startup.py"]
