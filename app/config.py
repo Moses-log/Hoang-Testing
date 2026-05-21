@@ -19,7 +19,8 @@ class Settings(BaseSettings):
 
     # ── Webhook security ──────────────────────────────────────────────────────
     # Must match the "secret" field TradingView sends in every alert payload.
-    webhook_secret: str
+    # Optional default allows the bot worker to start without it.
+    webhook_secret: str = "not-configured"
 
     # ── Server ────────────────────────────────────────────────────────────────
     port: int = 8000
