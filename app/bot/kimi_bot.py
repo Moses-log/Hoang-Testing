@@ -19,12 +19,15 @@ import logging
 import os
 import signal
 import sys
+import threading
+import time
 from collections import deque
 from datetime import datetime, date, timedelta, time as dtime
 
 import numpy as np
 import pandas as pd
 import pytz
+import requests
 
 from alpaca.data.live import StockDataStream
 from alpaca.data.historical import StockHistoricalDataClient
@@ -127,6 +130,44 @@ def load_state() -> None:
         log.info("No saved state — starting fresh")
     except Exception as exc:
         log.error("Failed to load state: %s", exc)
+
+# =============================================================================
+# SYNC NOTIFICATION (sync HTTP — used by background thread, not async context)
+# =============================================================================
+def _discord_sync(embed: dict) -> None:
+    url = settings.discord_trades_webhook_url or settings.discord_general_webhook_url
+    if not url:
+        return
+    try:
+        requests.post(url, json={"embeds": [embed]}, timeout=5)
+    except Exception as exc:
+        log.warning("Sync-thread Discord failed: %s", exc)
+
+
+# =============================================================================
+# POSITION SYNC LOOP — runs every 5 seconds in a background thread
+# =============================================================================
+def _sync_loop() -> None:
+    """Check all symbol positions every 5 seconds, detect manual trades."""
+    while True:
+        try:
+            for sym in SYMBOLS:
+                s = states[sym]
+                last_price = list(s["bars"])[-1] if s["bars"] else 0.0
+                event = sync_position(sym, last_price)
+                if event:
+                    if event["type"] == "manual_entry":
+                        _discord_sync(_manual_entry_embed(
+                            event["symbol"], event["qty"], event["avg_price"]
+                        ))
+                    elif event["type"] == "manual_exit":
+                        _discord_sync(_manual_exit_embed(
+                            event["symbol"], event["qty"], event["est_pnl"]
+                        ))
+        except Exception as exc:
+            log.warning("Sync loop error: %s", exc)
+        time.sleep(5)
+
 
 # =============================================================================
 # HELPERS
@@ -397,10 +438,6 @@ def process_bar(symbol: str, bar: dict) -> dict | None:
     stop_mult  = 1 - STOP_LOSS_PCT / 100
     bar_gap_ok = (s["bar_index"] - s["last_lev_bar"]) >= LEV_BAR_GAP
 
-    manual_msg = sync_position(symbol, c)
-    if manual_msg:
-        return {"type": "alert", "message": manual_msg}
-
     pos = ac.get_position(symbol)
     position_qty = float(pos.qty) if pos else 0.0
 
@@ -604,6 +641,10 @@ if __name__ == "__main__":
         replay_yesterday(sym)
 
     save_state()
+
+    # Start 5-second position sync thread (detects manual trades quickly)
+    threading.Thread(target=_sync_loop, daemon=True, name="position-sync").start()
+    log.info("🔄 Position sync thread started (every 5s)")
 
     stream = StockDataStream(settings.alpaca_api_key, settings.alpaca_secret_key, feed=DataFeed.IEX)
     stream.subscribe_bars(on_bar, *SYMBOLS)
