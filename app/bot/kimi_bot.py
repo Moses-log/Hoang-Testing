@@ -156,73 +156,87 @@ def buying_power(s: dict) -> float:
 # =============================================================================
 # DISCORD EMBEDS
 # =============================================================================
+_SRC = f"Kimi Bot · {'Paper' if PAPER else 'Live'}"
+
 def _entry_embed(symbol: str, price: float, qty: int, capital: float, stop: float) -> dict:
     return {
-        "title":  f"📈 BOT ENTRY — {symbol}",
+        "title":  f"📈 ENTRY — {symbol}",
         "color":  0x00B300,
         "fields": [
-            {"name": "Price",   "value": f"**${price:,.2f}**",  "inline": True},
-            {"name": "Shares",  "value": f"**{qty:,}**",         "inline": True},
-            {"name": "Capital", "value": f"**${capital:,.0f}**", "inline": True},
-            {"name": "Stop",    "value": f"**${stop:,.2f}**",    "inline": True},
+            {"name": "Ticker",       "value": f"**{symbol}**",          "inline": True},
+            {"name": "Symbol",       "value": symbol,                    "inline": True},
+            {"name": "Qty",          "value": f"**{qty:,.0f}** shares", "inline": True},
+            {"name": "Filled @",     "value": f"**${price:,.2f}**",     "inline": True},
+            {"name": "Capital Used", "value": f"**${capital:,.2f}**",   "inline": True},
+            {"name": "Stop",         "value": f"**${stop:,.2f}**",      "inline": True},
         ],
         "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"Kimi Bot · {'Paper' if PAPER else 'Live'}"},
+        "footer": {"text": f"{_SRC} | signal · bar close"},
     }
 
 def _exit_embed(symbol: str, price: float, qty: int, entry: float, pnl: float, pnl_pct: float, trade_n: int) -> dict:
-    icon = "🟢" if pnl >= 0 else "🔴"
+    pe_emoji = "🟢" if pnl >= 0 else "🔴"
     return {
-        "title":  f"📉 BOT EXIT — {symbol}",
+        "title":  f"📉 EXIT — {symbol}",
         "color":  0x00B300 if pnl >= 0 else 0xCC0000,
         "fields": [
-            {"name": "Exit",    "value": f"**${price:,.2f}**",                          "inline": True},
-            {"name": "Shares",  "value": f"**{qty:,}**",                                 "inline": True},
-            {"name": "Entry",   "value": f"**${entry:,.2f}**",                           "inline": True},
-            {"name": "P&L",     "value": f"{icon} **${pnl:+,.2f}** ({pnl_pct:+.2f}%)", "inline": True},
-            {"name": "Trade #", "value": str(trade_n),                                  "inline": True},
+            {"name": "Ticker",       "value": f"**{symbol}**",                                    "inline": True},
+            {"name": "Symbol",       "value": symbol,                                              "inline": True},
+            {"name": "Qty",          "value": f"**{qty:,.0f}** shares",                           "inline": True},
+            {"name": "Filled @",     "value": f"**${price:,.2f}**",                               "inline": True},
+            {"name": "Exit Amount",  "value": f"**${price * qty:,.2f}**",                         "inline": True},
+            {"name": "Avg Entry",    "value": f"${entry:,.2f}",                                   "inline": True},
+            {"name": "P&L",          "value": f"{pe_emoji} **${pnl:+,.2f}** ({pnl_pct:+.2f}%)", "inline": False},
         ],
         "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"Kimi Bot · {'Paper' if PAPER else 'Live'}"},
+        "footer": {"text": f"{_SRC} | signal · bar close | Trade #{trade_n}"},
     }
 
 def _stop_embed(symbol: str, price: float, qty: int, entry: float, pnl: float, pnl_pct: float) -> dict:
     return {
-        "title":  f"🛑 BOT STOP LOSS — {symbol}",
+        "title":  f"🛑 STOP LOSS — {symbol}",
         "color":  0xCC0000,
         "fields": [
-            {"name": "Exit",   "value": f"**${price:,.2f}**",                        "inline": True},
-            {"name": "Shares", "value": f"**{qty:,}**",                               "inline": True},
-            {"name": "Entry",  "value": f"**${entry:,.2f}**",                         "inline": True},
-            {"name": "P&L",    "value": f"🔴 **${pnl:+,.2f}** ({pnl_pct:+.2f}%)",   "inline": True},
+            {"name": "Ticker",       "value": f"**{symbol}**",                               "inline": True},
+            {"name": "Symbol",       "value": symbol,                                         "inline": True},
+            {"name": "Qty",          "value": f"**{qty:,.0f}** shares",                      "inline": True},
+            {"name": "Filled @",     "value": f"**${price:,.2f}**",                          "inline": True},
+            {"name": "Exit Amount",  "value": f"**${price * qty:,.2f}**",                    "inline": True},
+            {"name": "Avg Entry",    "value": f"${entry:,.2f}",                              "inline": True},
+            {"name": "P&L",          "value": f"🔴 **${pnl:+,.2f}** ({pnl_pct:+.2f}%)",    "inline": False},
         ],
         "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"Kimi Bot · {'Paper' if PAPER else 'Live'}"},
+        "footer": {"text": f"{_SRC} | signal · stop loss"},
     }
 
 def _manual_entry_embed(symbol: str, qty: int, avg_price: float) -> dict:
     return {
-        "title":  f"🔄 MANUAL ENTRY DETECTED — {symbol}",
-        "color":  0x2196F3,
+        "title":  f"📈 ENTRY — {symbol}",
+        "color":  0x00B300,
         "fields": [
-            {"name": "Shares",     "value": f"**{qty:,}**",           "inline": True},
-            {"name": "Avg Price",  "value": f"**${avg_price:,.2f}**", "inline": True},
+            {"name": "Ticker",       "value": f"**{symbol}**",               "inline": True},
+            {"name": "Symbol",       "value": symbol,                         "inline": True},
+            {"name": "Qty",          "value": f"**{qty:,.0f}** shares",      "inline": True},
+            {"name": "Filled @",     "value": f"**${avg_price:,.2f}**",      "inline": True},
+            {"name": "Capital Used", "value": f"**${qty * avg_price:,.2f}**","inline": True},
         ],
         "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"Kimi Bot · Synced from Alpaca · {'Paper' if PAPER else 'Live'}"},
+        "footer": {"text": f"{_SRC} | fill · manual"},
     }
 
 def _manual_exit_embed(symbol: str, qty: int, est_pnl: float) -> dict:
-    icon = "🟢" if est_pnl >= 0 else "🔴"
+    pe_emoji = "🟢" if est_pnl >= 0 else "🔴"
     return {
-        "title":  f"🔄 MANUAL EXIT DETECTED — {symbol}",
-        "color":  0x2196F3,
+        "title":  f"📉 EXIT — {symbol}",
+        "color":  0x00B300 if est_pnl >= 0 else 0xCC0000,
         "fields": [
-            {"name": "Shares",  "value": f"**{qty:,}**",                    "inline": True},
-            {"name": "Est P&L", "value": f"{icon} **${est_pnl:+,.2f}**",   "inline": True},
+            {"name": "Ticker",   "value": f"**{symbol}**",                      "inline": True},
+            {"name": "Symbol",   "value": symbol,                                "inline": True},
+            {"name": "Qty",      "value": f"**{qty:,.0f}** shares",             "inline": True},
+            {"name": "Est P&L",  "value": f"{pe_emoji} **${est_pnl:+,.2f}**",  "inline": True},
         ],
         "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"Kimi Bot · Synced from Alpaca · {'Paper' if PAPER else 'Live'}"},
+        "footer": {"text": f"{_SRC} | fill · manual"},
     }
 
 # =============================================================================
