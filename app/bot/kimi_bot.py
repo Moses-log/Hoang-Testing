@@ -199,57 +199,6 @@ def buying_power(s: dict) -> float:
 # =============================================================================
 _SRC = f"Kimi Bot · {'Paper' if PAPER else 'Live'}"
 
-def _entry_embed(symbol: str, price: float, qty: int, capital: float, stop: float) -> dict:
-    return {
-        "title":  f"📈 ENTRY — {symbol}",
-        "color":  0x00B300,
-        "fields": [
-            {"name": "Ticker",       "value": f"**{symbol}**",          "inline": True},
-            {"name": "Symbol",       "value": symbol,                    "inline": True},
-            {"name": "Qty",          "value": f"**{qty:,.0f}** shares", "inline": True},
-            {"name": "Filled @",     "value": f"**${price:,.2f}**",     "inline": True},
-            {"name": "Capital Used", "value": f"**${capital:,.2f}**",   "inline": True},
-            {"name": "Stop",         "value": f"**${stop:,.2f}**",      "inline": True},
-        ],
-        "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"{_SRC} | signal · bar close"},
-    }
-
-def _exit_embed(symbol: str, price: float, qty: int, entry: float, pnl: float, pnl_pct: float, trade_n: int) -> dict:
-    pe_emoji = "🟢" if pnl >= 0 else "🔴"
-    return {
-        "title":  f"📉 EXIT — {symbol}",
-        "color":  0x00B300 if pnl >= 0 else 0xCC0000,
-        "fields": [
-            {"name": "Ticker",       "value": f"**{symbol}**",                                    "inline": True},
-            {"name": "Symbol",       "value": symbol,                                              "inline": True},
-            {"name": "Qty",          "value": f"**{qty:,.0f}** shares",                           "inline": True},
-            {"name": "Filled @",     "value": f"**${price:,.2f}**",                               "inline": True},
-            {"name": "Exit Amount",  "value": f"**${price * qty:,.2f}**",                         "inline": True},
-            {"name": "Avg Entry",    "value": f"${entry:,.2f}",                                   "inline": True},
-            {"name": "P&L",          "value": f"{pe_emoji} **${pnl:+,.2f}** ({pnl_pct:+.2f}%)", "inline": False},
-        ],
-        "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"{_SRC} | signal · bar close | Trade #{trade_n}"},
-    }
-
-def _stop_embed(symbol: str, price: float, qty: int, entry: float, pnl: float, pnl_pct: float) -> dict:
-    return {
-        "title":  f"🛑 STOP LOSS — {symbol}",
-        "color":  0xCC0000,
-        "fields": [
-            {"name": "Ticker",       "value": f"**{symbol}**",                               "inline": True},
-            {"name": "Symbol",       "value": symbol,                                         "inline": True},
-            {"name": "Qty",          "value": f"**{qty:,.0f}** shares",                      "inline": True},
-            {"name": "Filled @",     "value": f"**${price:,.2f}**",                          "inline": True},
-            {"name": "Exit Amount",  "value": f"**${price * qty:,.2f}**",                    "inline": True},
-            {"name": "Avg Entry",    "value": f"${entry:,.2f}",                              "inline": True},
-            {"name": "P&L",          "value": f"🔴 **${pnl:+,.2f}** ({pnl_pct:+.2f}%)",    "inline": False},
-        ],
-        "timestamp": datetime.now(UTC).isoformat(),
-        "footer": {"text": f"{_SRC} | signal · stop loss"},
-    }
-
 def _manual_entry_embed(symbol: str, qty: int, avg_price: float) -> dict:
     return {
         "title":  f"📈 ENTRY — {symbol}",
@@ -577,21 +526,6 @@ async def on_bar(bar) -> None:
     t = event["type"]
     if t == "alert":
         await notify(event["message"])
-    elif t == "entry":
-        await notify_trades_embed(_entry_embed(
-            event["symbol"], event["price"], event["qty"],
-            event["capital"], event["stop"],
-        ))
-    elif t == "exit":
-        await notify_trades_embed(_exit_embed(
-            event["symbol"], event["price"], event["qty"],
-            event["entry"], event["pnl"], event["pnl_pct"], event["trade_n"],
-        ))
-    elif t == "stop":
-        await notify_trades_embed(_stop_embed(
-            event["symbol"], event["price"], event["qty"],
-            event["entry"], event["pnl"], event["pnl_pct"],
-        ))
     elif t == "manual_entry":
         await notify_trades_embed(_manual_entry_embed(
             event["symbol"], event["qty"], event["avg_price"],
