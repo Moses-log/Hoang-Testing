@@ -200,6 +200,31 @@ def _stop_embed(symbol: str, price: float, qty: int, entry: float, pnl: float, p
         "footer": {"text": f"Kimi Bot · {'Paper' if PAPER else 'Live'}"},
     }
 
+def _manual_entry_embed(symbol: str, qty: int, avg_price: float) -> dict:
+    return {
+        "title":  f"🔄 MANUAL ENTRY DETECTED — {symbol}",
+        "color":  0x2196F3,
+        "fields": [
+            {"name": "Shares",     "value": f"**{qty:,}**",           "inline": True},
+            {"name": "Avg Price",  "value": f"**${avg_price:,.2f}**", "inline": True},
+        ],
+        "timestamp": datetime.now(UTC).isoformat(),
+        "footer": {"text": f"Kimi Bot · Synced from Alpaca · {'Paper' if PAPER else 'Live'}"},
+    }
+
+def _manual_exit_embed(symbol: str, qty: int, est_pnl: float) -> dict:
+    icon = "🟢" if est_pnl >= 0 else "🔴"
+    return {
+        "title":  f"🔄 MANUAL EXIT DETECTED — {symbol}",
+        "color":  0x2196F3,
+        "fields": [
+            {"name": "Shares",  "value": f"**{qty:,}**",                    "inline": True},
+            {"name": "Est P&L", "value": f"{icon} **${est_pnl:+,.2f}**",   "inline": True},
+        ],
+        "timestamp": datetime.now(UTC).isoformat(),
+        "footer": {"text": f"Kimi Bot · Synced from Alpaca · {'Paper' if PAPER else 'Live'}"},
+    }
+
 # =============================================================================
 # HISTORICAL BARS
 # =============================================================================
@@ -306,11 +331,11 @@ def replay_yesterday(symbol: str) -> None:
 # =============================================================================
 # POSITION SYNC — detects manual trades on Alpaca
 # =============================================================================
-def sync_position(symbol: str, current_price: float) -> str | None:
-    """Returns a Discord message if a manual trade was detected, else None."""
+def sync_position(symbol: str, current_price: float) -> dict | None:
+    """Returns an event dict if a manual trade was detected, else None."""
     s   = states[symbol]
     pos = ac.get_position(symbol)
-    qty       = float(pos.qty)        if pos else 0.0
+    qty       = float(pos.qty)             if pos else 0.0
     avg_price = float(pos.avg_entry_price) if pos else 0.0
 
     if not s["has_lev1"] and qty > 0:
@@ -319,16 +344,17 @@ def sync_position(symbol: str, current_price: float) -> str | None:
                   "lev1_entry_price": avg_price, "lev1_deployed": qty * avg_price,
                   "alerted_lower": False, "alerted_mid": False, "alerted_upper": False})
         save_state()
-        return f"🔄 **{symbol}** manual entry synced — {int(qty)} shares @ ${avg_price:.2f}"
+        return {"type": "manual_entry", "symbol": symbol, "qty": int(qty), "avg_price": avg_price}
 
     elif s["has_lev1"] and qty == 0:
         pnl = (current_price - s["lev1_entry_price"]) * s["lev1_entry_qty"] if s["lev1_entry_price"] else 0
+        held = s["lev1_entry_qty"]
         log.warning("[%s] 🔄 Manual exit | Est P&L=$%.2f", symbol, pnl)
         s.update({"has_lev1": False, "lev1_entry_qty": 0, "lev1_entry_price": None,
                   "lev1_deployed": 0.0, "last_lev_bar": -999,
                   "alerted_lower": False, "alerted_mid": False, "alerted_upper": False})
         save_state()
-        return f"🔄 **{symbol}** manual exit detected | Est P&L: ${pnl:+,.2f}"
+        return {"type": "manual_exit", "symbol": symbol, "qty": held, "est_pnl": pnl}
 
     elif s["has_lev1"] and qty > 0 and int(qty) != s["lev1_entry_qty"]:
         log.warning("[%s] 🔄 Qty mismatch Bot=%d Alpaca=%d", symbol, s["lev1_entry_qty"], int(qty))
@@ -514,6 +540,14 @@ async def on_bar(bar) -> None:
         await notify_trades_embed(_stop_embed(
             event["symbol"], event["price"], event["qty"],
             event["entry"], event["pnl"], event["pnl_pct"],
+        ))
+    elif t == "manual_entry":
+        await notify_trades_embed(_manual_entry_embed(
+            event["symbol"], event["qty"], event["avg_price"],
+        ))
+    elif t == "manual_exit":
+        await notify_trades_embed(_manual_exit_embed(
+            event["symbol"], event["qty"], event["est_pnl"],
         ))
 
 # =============================================================================
