@@ -62,6 +62,18 @@ class Settings(BaseSettings):
     # enabled AND the symbol supports it.
     allow_fractional_shares: bool = False
 
+    # ── Kimi Bot settings ─────────────────────────────────────────────────────
+    # Comma-separated list of symbols to trade (e.g. "QQQ,SPY,NVDA")
+    bot_symbols: str = "QQQ,SPY,META,TSLA,NVDA,AAPL,CSCO,AMD,MU"
+    bot_bb_length: int = 20
+    bot_bb_mult: float = 2.0
+    bot_exit_band_pct: float = 0.0      # 0=middle band, 1=upper band
+    bot_stop_loss_pct: float = 50.0     # % below entry to stop out
+    bot_leverage_factor: float = 1.0
+    bot_lev_bar_gap: int = 30           # min bars between entries
+    bot_bb_alert_pct: float = 0.0005    # proximity alert threshold
+    bot_dtbp_usage: float = 0.5         # fraction of DTBP to use
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
 

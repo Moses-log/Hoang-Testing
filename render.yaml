@@ -1,0 +1,52 @@
+services:
+  # ── FastAPI Webhook Server (receives TradingView alerts) ───────────────────
+  - type: web
+    name: hoang-testing-webhook
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALPACA_API_KEY
+        sync: false
+      - key: ALPACA_SECRET_KEY
+        sync: false
+      - key: ALPACA_BASE_URL
+        value: https://paper-api.alpaca.markets/v2
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: DISCORD_GENERAL_WEBHOOK_URL
+        sync: false
+      - key: DISCORD_TRADES_WEBHOOK_URL
+        sync: false
+      - key: DISCORD_DAILY_PNL_WEBHOOK_URL
+        sync: false
+
+  # ── Kimi Bot (live bar subscriber + order placer) ──────────────────────────
+  - type: worker
+    name: hoang-kimi-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.bot.kimi_bot
+    envVars:
+      - key: ALPACA_API_KEY
+        sync: false
+      - key: ALPACA_SECRET_KEY
+        sync: false
+      - key: ALPACA_BASE_URL
+        value: https://paper-api.alpaca.markets/v2
+      - key: WEBHOOK_SECRET
+        value: not-used
+      - key: DISCORD_GENERAL_WEBHOOK_URL
+        sync: false
+      - key: DISCORD_TRADES_WEBHOOK_URL
+        sync: false
+      - key: BOT_SYMBOLS
+        value: QQQ,SPY,META,TSLA,NVDA,AAPL,CSCO,AMD,MU
+      - key: BOT_DTBP_USAGE
+        value: "0.5"
+      - key: BOT_BB_LENGTH
+        value: "20"
+      - key: BOT_STOP_LOSS_PCT
+        value: "50.0"
+      - key: BOT_LEV_BAR_GAP
+        value: "30"

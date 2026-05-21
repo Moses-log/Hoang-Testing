@@ -1,3 +1,7 @@
+# Numerical / data (used by kimi_bot)
+numpy>=1.26.0
+pandas>=2.2.0
+
 # Web framework
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
