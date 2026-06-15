@@ -258,7 +258,7 @@ def _kimi_remove_leverage(ticker: str, qty: int, limit_price: Optional[float] = 
         extra={"ticker": ticker, "requested_qty": qty, "sell_qty": sell_qty, "limit_price": limit_price},
     )
     if limit_price:
-        return ac.place_limit_order(ticker, OrderSide.SELL, sell_qty, limit_price, time_in_force)
+        return ac.place_limit_order(ticker, OrderSide.SELL, sell_qty, limit_price, time_in_force, extended_hours=True)
     return ac.place_market_order(ticker, OrderSide.SELL, sell_qty, time_in_force)
 
 

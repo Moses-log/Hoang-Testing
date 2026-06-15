@@ -204,15 +204,18 @@ def place_limit_order(
     qty: float,
     limit_price: float,
     time_in_force: str = "gtc",
+    extended_hours: bool = False,
 ) -> Order:
     """
     Submit a limit order at the specified limit_price.
 
     qty is rounded to a whole number unless allow_fractional_shares is True.
     Raises ValueError if qty rounds to 0.
+    Extended hours requires time_in_force=day (Alpaca restriction).
     """
     qty = _sanitise_qty(qty)
-    tif = TimeInForce(time_in_force)
+    # Alpaca only allows extended_hours with DAY limit orders
+    tif = TimeInForce.DAY if extended_hours else TimeInForce(time_in_force)
 
     req = LimitOrderRequest(
         symbol=ticker,
@@ -220,11 +223,12 @@ def place_limit_order(
         side=side,
         limit_price=round(limit_price, 2),
         time_in_force=tif,
+        extended_hours=extended_hours,
     )
 
     log.info(
         "Submitting limit order",
-        extra={"ticker": ticker, "side": side.value, "qty": qty, "limit_price": limit_price, "time_in_force": time_in_force},
+        extra={"ticker": ticker, "side": side.value, "qty": qty, "limit_price": limit_price, "time_in_force": tif.value, "extended_hours": extended_hours},
     )
     order = get_client().submit_order(req)
     log.info(
