@@ -169,7 +169,7 @@ async def execute_action(payload: AlertPayload) -> dict:
             result["note"] = f"Order skipped for {action} — qty was 0 or DTBP exhausted."
 
     elif action in [TradingAction.REMOVE_LEVERAGE, TradingAction.REMOVE_LEVERAGE2, TradingAction.REMOVE_LEVERAGE3]:
-        order = _kimi_remove_leverage(ticker, math.floor(qty or 0))
+        order = _kimi_remove_leverage(ticker, math.floor(qty or 0), payload.limit_price, payload.time_in_force)
         if order:
             result["orders"].append(_order_summary(order))
         else:
@@ -222,13 +222,14 @@ def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, lim
     return ac.place_market_order(ticker, OrderSide.BUY, actual_qty, time_in_force)
 
 
-def _kimi_remove_leverage(ticker: str, qty: int) -> Optional[Order]:
+def _kimi_remove_leverage(ticker: str, qty: int, limit_price: Optional[float] = None, time_in_force: str = "gtc") -> Optional[Order]:
     """
     Sell exactly the qty sent by TradingView.
     TradingView alert message must include:
         "contracts": {{strategy.order.contracts}}
 
     Safety cap ensures we never sell more than what Alpaca actually holds.
+    Uses a limit order when limit_price is provided, otherwise market order.
     """
     if qty <= 0:
         log.warning(
@@ -254,9 +255,11 @@ def _kimi_remove_leverage(ticker: str, qty: int) -> Optional[Order]:
 
     log.info(
         "Closing Kimi DD position",
-        extra={"ticker": ticker, "requested_qty": qty, "sell_qty": sell_qty},
+        extra={"ticker": ticker, "requested_qty": qty, "sell_qty": sell_qty, "limit_price": limit_price},
     )
-    return ac.place_market_order(ticker, OrderSide.SELL, sell_qty)
+    if limit_price:
+        return ac.place_limit_order(ticker, OrderSide.SELL, sell_qty, limit_price, time_in_force)
+    return ac.place_market_order(ticker, OrderSide.SELL, sell_qty, time_in_force)
 
 
 def _kimi_stop_loss(ticker: str) -> list:
