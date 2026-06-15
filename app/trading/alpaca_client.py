@@ -161,7 +161,7 @@ def place_market_order(
     ticker: str,
     side: OrderSide,
     qty: float,
-    time_in_force: str = "day",
+    time_in_force: str = "gtc",
 ) -> Order:
     """
     Submit a market order.
@@ -203,7 +203,7 @@ def place_limit_order(
     side: OrderSide,
     qty: float,
     limit_price: float,
-    time_in_force: str = "day",
+    time_in_force: str = "gtc",
 ) -> Order:
     """
     Submit a limit order at the specified limit_price.

@@ -49,8 +49,8 @@ class AlertPayload(BaseModel):
     # If set, a limit order is placed at this price instead of a market order
     limit_price: Optional[float] = None
 
-    # Order time-in-force — defaults to "day" if not provided
-    time_in_force: str = "day"
+    # Order time-in-force — defaults to "gtc" if not provided
+    time_in_force: str = "gtc"
 
     # TradingView strategy order ID — used as idempotency key
     order_id: Optional[str] = None

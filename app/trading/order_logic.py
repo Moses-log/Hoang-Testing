@@ -189,7 +189,7 @@ async def execute_action(payload: AlertPayload) -> dict:
 
 # ── Kimi-specific helpers ─────────────────────────────────────────────────────
 
-def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, limit_price: Optional[float] = None, time_in_force: str = "day") -> Optional[Order]:
+def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, limit_price: Optional[float] = None, time_in_force: str = "gtc") -> Optional[Order]:
     """
     Buy up to qty shares, capped by Day Trading Buying Power.
     If DTBP covers fewer shares than requested, the reduced qty is used.
@@ -279,7 +279,7 @@ def _require_qty_then_order(
     qty: Optional[float],
     price: Optional[float] = None,
     limit_price: Optional[float] = None,
-    time_in_force: str = "day",
+    time_in_force: str = "gtc",
 ) -> Order:
     if qty is None or qty <= 0:
         raise ValueError(
