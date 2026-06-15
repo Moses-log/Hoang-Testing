@@ -161,6 +161,7 @@ def place_market_order(
     ticker: str,
     side: OrderSide,
     qty: float,
+    time_in_force: str = "day",
 ) -> Order:
     """
     Submit a market order.
@@ -169,17 +170,18 @@ def place_market_order(
     Raises ValueError if qty rounds to 0.
     """
     qty = _sanitise_qty(qty)
+    tif = TimeInForce(time_in_force)
 
     req = MarketOrderRequest(
         symbol=ticker,
         qty=qty,
         side=side,
-        time_in_force=TimeInForce.DAY,
+        time_in_force=tif,
     )
 
     log.info(
         "Submitting market order",
-        extra={"ticker": ticker, "side": side.value, "qty": qty},
+        extra={"ticker": ticker, "side": side.value, "qty": qty, "time_in_force": time_in_force},
     )
     order = get_client().submit_order(req)
     log.info(
@@ -201,6 +203,7 @@ def place_limit_order(
     side: OrderSide,
     qty: float,
     limit_price: float,
+    time_in_force: str = "day",
 ) -> Order:
     """
     Submit a limit order at the specified limit_price.
@@ -209,18 +212,19 @@ def place_limit_order(
     Raises ValueError if qty rounds to 0.
     """
     qty = _sanitise_qty(qty)
+    tif = TimeInForce(time_in_force)
 
     req = LimitOrderRequest(
         symbol=ticker,
         qty=qty,
         side=side,
         limit_price=round(limit_price, 2),
-        time_in_force=TimeInForce.DAY,
+        time_in_force=tif,
     )
 
     log.info(
         "Submitting limit order",
-        extra={"ticker": ticker, "side": side.value, "qty": qty, "limit_price": limit_price},
+        extra={"ticker": ticker, "side": side.value, "qty": qty, "limit_price": limit_price, "time_in_force": time_in_force},
     )
     order = get_client().submit_order(req)
     log.info(

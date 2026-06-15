@@ -119,11 +119,11 @@ async def execute_action(payload: AlertPayload) -> dict:
     # ── Legacy actions ────────────────────────────────────────────────────────
 
     if action == TradingAction.BUY:
-        order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price, payload.limit_price)
+        order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price, payload.limit_price, payload.time_in_force)
         result["orders"].append(_order_summary(order))
 
     elif action == TradingAction.SELL:
-        order = _require_qty_then_order(ticker, OrderSide.SELL, qty, limit_price=payload.limit_price)
+        order = _require_qty_then_order(ticker, OrderSide.SELL, qty, limit_price=payload.limit_price, time_in_force=payload.time_in_force)
         result["orders"].append(_order_summary(order))
 
     elif action == TradingAction.CLOSE_LONG:
@@ -144,14 +144,14 @@ async def execute_action(payload: AlertPayload) -> dict:
         close_order = _close_if_short(ticker)
         if close_order:
             result["orders"].append(_order_summary(close_order))
-        long_order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price, payload.limit_price)
+        long_order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price, payload.limit_price, payload.time_in_force)
         result["orders"].append(_order_summary(long_order))
 
     elif action == TradingAction.REVERSE_TO_SHORT:
         close_order = _close_if_long(ticker)
         if close_order:
             result["orders"].append(_order_summary(close_order))
-        short_order = _require_qty_then_order(ticker, OrderSide.SELL, qty, limit_price=payload.limit_price)
+        short_order = _require_qty_then_order(ticker, OrderSide.SELL, qty, limit_price=payload.limit_price, time_in_force=payload.time_in_force)
         result["orders"].append(_order_summary(short_order))
 
     # ── Kimi strategy actions ─────────────────────────────────────────────────
@@ -162,7 +162,7 @@ async def execute_action(payload: AlertPayload) -> dict:
 
     # Grouping Level 1 and Level 2 together since they use the same logic
     elif action in [TradingAction.ADD_LEVERAGE, TradingAction.ADD_LEVERAGE2, TradingAction.ADD_LEVERAGE3]:
-        order = _kimi_add_leverage(ticker, math.floor(qty or 0), payload.price, payload.limit_price)
+        order = _kimi_add_leverage(ticker, math.floor(qty or 0), payload.price, payload.limit_price, payload.time_in_force)
         if order:
             result["orders"].append(_order_summary(order))
         else:
@@ -189,7 +189,7 @@ async def execute_action(payload: AlertPayload) -> dict:
 
 # ── Kimi-specific helpers ─────────────────────────────────────────────────────
 
-def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, limit_price: Optional[float] = None) -> Optional[Order]:
+def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, limit_price: Optional[float] = None, time_in_force: str = "day") -> Optional[Order]:
     """
     Buy up to qty shares, capped by Day Trading Buying Power.
     If DTBP covers fewer shares than requested, the reduced qty is used.
@@ -215,11 +215,11 @@ def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, lim
 
     log.info(
         "Placing Kimi DD buy",
-        extra={"ticker": ticker, "requested_qty": qty, "actual_qty": actual_qty, "limit_price": limit_price},
+        extra={"ticker": ticker, "requested_qty": qty, "actual_qty": actual_qty, "limit_price": limit_price, "time_in_force": time_in_force},
     )
     if limit_price:
-        return ac.place_limit_order(ticker, OrderSide.BUY, actual_qty, limit_price)
-    return ac.place_market_order(ticker, OrderSide.BUY, actual_qty)
+        return ac.place_limit_order(ticker, OrderSide.BUY, actual_qty, limit_price, time_in_force)
+    return ac.place_market_order(ticker, OrderSide.BUY, actual_qty, time_in_force)
 
 
 def _kimi_remove_leverage(ticker: str, qty: int) -> Optional[Order]:
@@ -279,6 +279,7 @@ def _require_qty_then_order(
     qty: Optional[float],
     price: Optional[float] = None,
     limit_price: Optional[float] = None,
+    time_in_force: str = "day",
 ) -> Order:
     if qty is None or qty <= 0:
         raise ValueError(
@@ -292,8 +293,8 @@ def _require_qty_then_order(
                 f"Buy order for {ticker} skipped — Day Trading Buying Power is exhausted."
             )
     if limit_price:
-        return ac.place_limit_order(ticker, side, qty, limit_price)
-    return ac.place_market_order(ticker, side, qty)
+        return ac.place_limit_order(ticker, side, qty, limit_price, time_in_force)
+    return ac.place_market_order(ticker, side, qty, time_in_force)
 
 
 def _close_if_long(ticker: str) -> Optional[Order]:

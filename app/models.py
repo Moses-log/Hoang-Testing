@@ -49,6 +49,9 @@ class AlertPayload(BaseModel):
     # If set, a limit order is placed at this price instead of a market order
     limit_price: Optional[float] = None
 
+    # Order time-in-force — defaults to "day" if not provided
+    time_in_force: str = "day"
+
     # TradingView strategy order ID — used as idempotency key
     order_id: Optional[str] = None
 
@@ -95,5 +98,10 @@ class AlertPayload(BaseModel):
         if v is None or v == "" or v == "NaN":
             return None
         return float(v)
+
+    @field_validator("time_in_force", mode="before")
+    @classmethod
+    def normalise_tif(cls, v):
+        return str(v).strip().lower() if v else "day"
 
     model_config = {"extra": "ignore"}
