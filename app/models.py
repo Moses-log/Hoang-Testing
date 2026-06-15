@@ -52,6 +52,9 @@ class AlertPayload(BaseModel):
     # Order time-in-force — defaults to "gtc" if not provided
     time_in_force: str = "gtc"
 
+    # If true, order is eligible for pre/post market execution (limit orders only)
+    extended_hours: bool = False
+
     # TradingView strategy order ID — used as idempotency key
     order_id: Optional[str] = None
 
