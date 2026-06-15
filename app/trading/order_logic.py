@@ -119,11 +119,11 @@ async def execute_action(payload: AlertPayload) -> dict:
     # ── Legacy actions ────────────────────────────────────────────────────────
 
     if action == TradingAction.BUY:
-        order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price)
+        order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price, payload.limit_price)
         result["orders"].append(_order_summary(order))
 
     elif action == TradingAction.SELL:
-        order = _require_qty_then_order(ticker, OrderSide.SELL, qty)
+        order = _require_qty_then_order(ticker, OrderSide.SELL, qty, limit_price=payload.limit_price)
         result["orders"].append(_order_summary(order))
 
     elif action == TradingAction.CLOSE_LONG:
@@ -144,14 +144,14 @@ async def execute_action(payload: AlertPayload) -> dict:
         close_order = _close_if_short(ticker)
         if close_order:
             result["orders"].append(_order_summary(close_order))
-        long_order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price)
+        long_order = _require_qty_then_order(ticker, OrderSide.BUY, qty, payload.price, payload.limit_price)
         result["orders"].append(_order_summary(long_order))
 
     elif action == TradingAction.REVERSE_TO_SHORT:
         close_order = _close_if_long(ticker)
         if close_order:
             result["orders"].append(_order_summary(close_order))
-        short_order = _require_qty_then_order(ticker, OrderSide.SELL, qty)
+        short_order = _require_qty_then_order(ticker, OrderSide.SELL, qty, limit_price=payload.limit_price)
         result["orders"].append(_order_summary(short_order))
 
     # ── Kimi strategy actions ─────────────────────────────────────────────────
@@ -162,7 +162,7 @@ async def execute_action(payload: AlertPayload) -> dict:
 
     # Grouping Level 1 and Level 2 together since they use the same logic
     elif action in [TradingAction.ADD_LEVERAGE, TradingAction.ADD_LEVERAGE2, TradingAction.ADD_LEVERAGE3]:
-        order = _kimi_add_leverage(ticker, math.floor(qty or 0), payload.price)
+        order = _kimi_add_leverage(ticker, math.floor(qty or 0), payload.price, payload.limit_price)
         if order:
             result["orders"].append(_order_summary(order))
         else:
@@ -189,11 +189,12 @@ async def execute_action(payload: AlertPayload) -> dict:
 
 # ── Kimi-specific helpers ─────────────────────────────────────────────────────
 
-def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None) -> Optional[Order]:
+def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None, limit_price: Optional[float] = None) -> Optional[Order]:
     """
     Buy up to qty shares, capped by Day Trading Buying Power.
     If DTBP covers fewer shares than requested, the reduced qty is used.
     If DTBP is $0, the order is skipped entirely.
+    Uses a limit order when limit_price is provided, otherwise market order.
     TradingView alert message must include:
         "contracts": {{strategy.order.contracts}}
     """
@@ -214,8 +215,10 @@ def _kimi_add_leverage(ticker: str, qty: int, price: Optional[float] = None) -> 
 
     log.info(
         "Placing Kimi DD buy",
-        extra={"ticker": ticker, "requested_qty": qty, "actual_qty": actual_qty},
+        extra={"ticker": ticker, "requested_qty": qty, "actual_qty": actual_qty, "limit_price": limit_price},
     )
+    if limit_price:
+        return ac.place_limit_order(ticker, OrderSide.BUY, actual_qty, limit_price)
     return ac.place_market_order(ticker, OrderSide.BUY, actual_qty)
 
 
@@ -275,6 +278,7 @@ def _require_qty_then_order(
     side: OrderSide,
     qty: Optional[float],
     price: Optional[float] = None,
+    limit_price: Optional[float] = None,
 ) -> Order:
     if qty is None or qty <= 0:
         raise ValueError(
@@ -287,6 +291,8 @@ def _require_qty_then_order(
             raise ValueError(
                 f"Buy order for {ticker} skipped — Day Trading Buying Power is exhausted."
             )
+    if limit_price:
+        return ac.place_limit_order(ticker, side, qty, limit_price)
     return ac.place_market_order(ticker, side, qty)
 
 

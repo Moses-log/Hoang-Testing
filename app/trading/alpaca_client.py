@@ -26,6 +26,7 @@ from tenacity import (
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import (
     MarketOrderRequest,
+    LimitOrderRequest,
     ClosePositionRequest,
     GetCalendarRequest,
     GetPortfolioHistoryRequest,
@@ -189,6 +190,48 @@ def place_market_order(
             "side":     side.value,
             "qty":      qty,
             "status":   order.status,
+        },
+    )
+    return order
+
+
+@_retry
+def place_limit_order(
+    ticker: str,
+    side: OrderSide,
+    qty: float,
+    limit_price: float,
+) -> Order:
+    """
+    Submit a limit order at the specified limit_price.
+
+    qty is rounded to a whole number unless allow_fractional_shares is True.
+    Raises ValueError if qty rounds to 0.
+    """
+    qty = _sanitise_qty(qty)
+
+    req = LimitOrderRequest(
+        symbol=ticker,
+        qty=qty,
+        side=side,
+        limit_price=round(limit_price, 2),
+        time_in_force=TimeInForce.DAY,
+    )
+
+    log.info(
+        "Submitting limit order",
+        extra={"ticker": ticker, "side": side.value, "qty": qty, "limit_price": limit_price},
+    )
+    order = get_client().submit_order(req)
+    log.info(
+        "Order accepted",
+        extra={
+            "order_id":    str(order.id),
+            "ticker":      ticker,
+            "side":        side.value,
+            "qty":         qty,
+            "limit_price": limit_price,
+            "status":      order.status,
         },
     )
     return order

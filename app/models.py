@@ -46,6 +46,9 @@ class AlertPayload(BaseModel):
     # Current bar close price — used for Kimi DD sizing
     price: Optional[float] = None
 
+    # If set, a limit order is placed at this price instead of a market order
+    limit_price: Optional[float] = None
+
     # TradingView strategy order ID — used as idempotency key
     order_id: Optional[str] = None
 
@@ -86,7 +89,7 @@ class AlertPayload(BaseModel):
         }
         return mapping.get(v, v)
 
-    @field_validator("contracts", mode="before")
+    @field_validator("contracts", "limit_price", mode="before")
     @classmethod
     def parse_contracts(cls, v):
         if v is None or v == "" or v == "NaN":
